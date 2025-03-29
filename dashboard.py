@@ -165,7 +165,7 @@ if st.button("🚀 Train Model"):
 
         # 🔄 Encode Categorical Features
         encoder = OrdinalEncoder()
-        df[['Gender']] = encoder.fit_transform(df[['Gender']])
+        df[['Gender']] = encoder.fit_transform(df[['Gender']])  # Encode 'Gender' column
 
         # Handle Class Imbalance with SMOTE
         X = df[features]
