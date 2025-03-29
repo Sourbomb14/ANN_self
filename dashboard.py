@@ -22,8 +22,15 @@ st.set_page_config(page_title="ANN Conversion Prediction", layout="wide")
 
 # 📥 Load Dataset
 DATASET_FILE_ID = "1OPmMFUQmeZuaiYb0FQhwOMZfEbVrWKEK"
+MODEL_FILE_ID = "1NNxt6hnkAxUO8aI2sNCzPut0Nbmp8H_T"  # Add this line to define the model file ID
+MODEL_PATH = "conversion_model.h5" # Define a path for the model
+
 if not os.path.exists("data.csv"):
     gdown.download(f"https://drive.google.com/uc?id={DATASET_FILE_ID}", "data.csv", quiet=False)
+
+if not os.path.exists(MODEL_PATH): # Download the model if it doesn't exist
+    gdown.download(f"https://drive.google.com/uc?id={MODEL_FILE_ID}", MODEL_PATH, quiet=False)
+
 
 # 🎨 Updated Custom CSS for Enhanced UI - Coral and Teal Theme
 st.markdown(
@@ -264,6 +271,54 @@ if st.button("🚀 Train Model"):
     importance_df = pd.DataFrame({'Feature': X.columns, 'Importance': mean_abs_shap_values})
     importance_df = importance_df.sort_values(by="Importance", ascending=False)
     st.dataframe(importance_df)
+
+# Load the model
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# --- 5. Make Predictions ---
+st.subheader("🔮 Predict Conversion for a New Customer")
+
+# Input fields for the new customer's data
+age = st.number_input("Age", min_value=18, max_value=80, value=30)
+gender = st.selectbox("Gender", ["Male", "Female"])
+income = st.number_input("Income", min_value=10000, max_value=100000, value=50000)
+purchases = st.number_input("Number of Purchases", min_value=0, max_value=100, value=5)
+clicks = st.number_input("Number of Clicks", min_value=0, max_value=1000, value=100)
+spent = st.number_input("Amount Spent", min_value=0.0, max_value=10000.0, value=1000.0)
+
+# Encode gender
+gender_encoded = 0 if gender == "Male" else 1
+
+# Prepare input data for prediction
+new_customer_data = np.array([[age, gender_encoded, income, purchases, clicks, spent]])
+
+# Standardize the input data using the same scaler used during training
+scaler = StandardScaler()
+#dummy_data to avoid error
+dummy_train = np.array([[18, 0, 10000, 0, 0, 1000.0], [80, 1, 100000, 100, 1000, 10000.0]])
+scaler.fit(dummy_train)
+new_customer_scaled = scaler.transform(new_customer_data)
+
+
+# Predict Conversion
+if st.button("Predict Conversion"):
+    prediction = model.predict(new_customer_scaled)
+    conversion_probability = prediction[0][0]
+    st.write(f"Conversion Probability: {conversion_probability:.4f}")
+
+# Display the first 5 rows of the dataframe
+st.subheader("Sample Data")
+df = pd.read_csv("data.csv") #load the data
+st.dataframe(df.head())
+
+# Display descriptive statistics for the numerical columns
+st.subheader("Descriptive Statistics")
+st.dataframe(df.describe())
+
+#  create pair plots for the numerical features
+st.subheader("Pair Plots")
+fig = sns.pairplot(df[['Age', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']], hue='Converted')
+st.pyplot(fig)
 
 # GitHub Follow Button
 st.markdown(
