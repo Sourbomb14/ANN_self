@@ -299,15 +299,10 @@ df = pd.read_csv("data.csv")
 df = df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']]
 
 # Convert all columns to numeric and drop NaNs
-df = df.apply(pd.to_numeric, errors='coerce').dropna()
+df['Gender'] = pd.to_numeric(df['Gender'], errors='coerce')
+df = df.dropna()
 
 # Plot heatmap
 fig, ax = plt.subplots(figsize=(8, 6))
 sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
 st.pyplot(fig)
-
-# Add a check for GPU availability and print a message
-if tf.config.list_physical_devices('GPU'):
-    st.write("GPU is available. TensorFlow will use it if possible.")
-else:
-    st.write("No GPU available. TensorFlow will use the CPU.")
