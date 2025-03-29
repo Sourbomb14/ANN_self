@@ -16,7 +16,7 @@ from imblearn.over_sampling import SMOTE
 from PIL import Image
 
 # Set Streamlit Page Configuration
-st.set_page_config(page_title="ANN Conversion Prediction", layout="wide")
+st.set_page_config(page_title="ANN Model Dashboard - Conversion Prediction", layout="wide")
 
 # --- 1. Data Loading and Preprocessing ---
 
@@ -274,38 +274,13 @@ if st.button("🚀 Train Model"):
     st.dataframe(importance_df)
 
 # Load the model
-model = tf.keras.models.load_model(MODEL_PATH)
-
-# --- 5. Make Predictions ---
-st.subheader("🔮 Predict Conversion for a New Customer")
-
-# Input fields for the new customer's data
-age = st.number_input("Age", min_value=18, max_value=80, value=30)
-gender = st.selectbox("Gender", ["Male", "Female"])
-income = st.number_input("Income", min_value=10000, max_value=100000, value=50000)
-purchases = st.number_input("Number of Purchases", min_value=0, max_value=100, value=5)
-clicks = st.number_input("Number of Clicks", min_value=0, max_value=1000, value=100)
-spent = st.number_input("Amount Spent", min_value=0.0, max_value=10000.0, value=1000.0)
-
-# Encode gender
-gender_encoded = 0 if gender == "Male" else 1
-
-# Prepare input data for prediction
-new_customer_data = np.array([[age, gender_encoded, income, purchases, clicks, spent]])
-
-# Standardize the input data using the same scaler used during training
-scaler = StandardScaler()
-#dummy_data to avoid error
-dummy_train = np.array([[18, 0, 10000, 0, 0, 1000.0], [80, 1, 100000, 100, 1000, 10000.0]])
-scaler.fit(dummy_train)
-new_customer_scaled = scaler.transform(new_customer_data)
+try:
+    model = tf.keras.models.load_model(MODEL_PATH)
+except Exception as e:
+    st.error(f"Error loading the model: {e}.  Please ensure the model file is available.")
+    model = None  #  Set model to None to prevent further errors
 
 
-# Predict Conversion
-if st.button("Predict Conversion"):
-    prediction = model.predict(new_customer_scaled)
-    conversion_probability = prediction[0][0]
-    st.write(f"Conversion Probability: {conversion_probability:.4f}")
 
 # Display the first 5 rows of the dataframe
 st.subheader("Sample Data")
@@ -316,21 +291,14 @@ st.dataframe(df.head())
 st.subheader("Descriptive Statistics")
 st.dataframe(df.describe())
 
-# Create pair plots for the numerical features
-st.subheader("Pair Plots")
-fig = sns.pairplot(df[['Age', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']], hue='Converted')
+# Correlation Heatmap
+st.subheader("Correlation Heatmap")
+fig, ax = plt.subplots(figsize=(8, 6))
+sns.heatmap(df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']].corr(), annot=True, cmap="coolwarm", ax=ax)
 st.pyplot(fig)
 
-# GitHub Follow Button
-st.markdown(
-    """
-    <div style="text-align: center; margin-top: 2rem;">
-        <a href="https://github.com/Rushil-K" target="_blank" rel="noopener noreferrer">
-            <button style="background-color: #008080; color: white; padding: 12px 24px; font-size: 18px; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.3s ease;">
-                ⭐ Follow Me on GitHub
-            </button>
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# Add a check for GPU availability and print a message
+if tf.config.list_physical_devices('GPU'):
+    st.write("GPU is available. TensorFlow will use it if possible.")
+else:
+    st.write("No GPU available. TensorFlow will use the CPU.")
