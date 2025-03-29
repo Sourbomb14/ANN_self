@@ -22,8 +22,15 @@ st.set_page_config(page_title="ANN Conversion Prediction", layout="wide")
 
 # 📥 Load Dataset
 DATASET_FILE_ID = "1OPmMFUQmeZuaiYb0FQhwOMZfEbVrWKEK"
-if not os.path.exists("data.csv"):
-    gdown.download(f"https://drive.google.com/uc?id={DATASET_FILE_ID}", "data.csv", quiet=False)
+DATASET_FILE_NAME = "data.csv" # Added a constant for filename
+if not os.path.exists(DATASET_FILE_NAME):
+    try:
+        with st.spinner(f"Downloading dataset..."): # Added spinner
+            gdown.download(f"https://drive.google.com/uc?id={DATASET_FILE_ID}", DATASET_FILE_NAME, quiet=False)
+        st.success("Dataset downloaded successfully!")
+    except Exception as e:
+        st.error(f"Error downloading dataset: {e}")
+        st.stop()
 
 # 🎨 Updated Custom CSS for Enhanced UI - Coral and Teal Theme
 st.markdown(
@@ -100,6 +107,10 @@ st.markdown(
 # 🖼️ App Title and Logo
 st.title("📊 ANN Model Dashboard - Conversion Prediction")
 
+# Initialize session state
+if 'model_trained' not in st.session_state:
+    st.session_state.model_trained = False
+
 # Sidebar for Hyperparameter Tuning
 st.sidebar.header("🔧 Model Hyperparameters")
 epochs = st.sidebar.slider("Epochs", 5, 12, 10, 1)
@@ -148,45 +159,64 @@ def build_model(input_shape, optimizer, activation, dense_layers, neurons, dropo
 # --- 4. Model Training and Evaluation ---
 if st.button("🚀 Train Model"):
     with st.spinner("Training model... ⏳"):
-        # Load the entire dataset
-        df = pd.read_csv("data.csv")
+        try:
+            # Load the entire dataset
+            df = pd.read_csv(DATASET_FILE_NAME)
 
-        # Randomly sample 50,000 rows
-        df = df.sample(n=50000, random_state=552627) # sampling 50000 rows
+            # Randomly sample 50,000 rows
+            df = df.sample(n=50000, random_state=552627)
 
-        # 🎯 Feature Selection
-        features = ['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent']
-        target = 'Converted'
+            # 🎯 Feature Selection
+            features = ['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent']
+            target = 'Converted'
 
-        # 🔄 Encode Categorical Features
-        encoder = OrdinalEncoder()
-        df[['Gender']] = encoder.fit_transform(df[['Gender']])
+            # 🔄 Encode Categorical Features
+            encoder = OrdinalEncoder()
+            df[['Gender']] = encoder.fit_transform(df[['Gender']])
 
-        # Handle Class Imbalance with SMOTE
-        X = df[features]
-        y = df[target]
-        smote = SMOTE(random_state=552627)
-        X_resampled, y_resampled = smote.fit_resample(X, y)
-        X_resampled = pd.DataFrame(X_resampled, columns=X.columns)
+            # Split data into train and test *before* SMOTE
+            X = df[features]
+            y = df[target]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=552627)
 
-        # Standardize Data
-        scaler = StandardScaler()
-        X_resampled[X.columns] = scaler.fit_transform(X_resampled)
+            # Handle Class Imbalance with SMOTE (on training data only)
+            smote = SMOTE(random_state=552627)
+            X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+            X_train_resampled = pd.DataFrame(X_train_resampled, columns=X_train.columns)
 
-        # Train-Test Split
-        X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, stratify=y_resampled, random_state=552627)
+            # Standardize Data (separately for train and test)
+            scaler = StandardScaler()
+            X_train_resampled[X_train.columns] = scaler.fit_transform(X_train_resampled)
+            X_test[X.columns] = scaler.transform(X_test) # Use transform, not fit_transform on test
 
-        # Compute Class Weights
-        class_weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
-        class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
+            # Compute Class Weights
+            class_weights = compute_class_weight("balanced", classes=np.unique(y_train_resampled), y=y_train_resampled)
+            class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
 
-        # Build and train the model
-        model = build_model(X_train.shape[1], optimizer, activation_function, dense_layers, neurons_per_layer, dropout_rate)
-        history = model.fit(X_train, y_train, epochs=epochs, batch_size=128, validation_split=0.2, class_weight=class_weight_dict, verbose=0)
+            # Build and train the model
+            model = build_model(X_train_resampled.shape[1], optimizer, activation_function, dense_layers, neurons_per_layer, dropout_rate)
+            history = model.fit(X_train_resampled, y_train_resampled, epochs=epochs, batch_size=128, validation_split=0.2, class_weight=class_weight_dict, verbose=0)
 
-    st.success("🎉 Model training complete!")
+            # Store the trained model in session state
+            st.session_state.model = model
+            st.session_state.X_test = X_test
+            st.session_state.y_test = y_test
+            st.session_state.history = history
+            st.session_state.model_trained = True # Set flag to indicate model is trained
 
+            st.success("🎉 Model training complete!")
+
+        except Exception as e:
+            st.error(f"An error occurred during training: {e}")
+            st.stop()
+
+if st.session_state.model_trained: # Only show evaluation if model has been trained
     # Model Performance Evaluation
+    model = st.session_state.model
+    X_test = st.session_state.X_test
+    y_test = st.session_state.y_test
+    history = st.session_state.history
+
     loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
 
     # Display Metrics
@@ -210,7 +240,7 @@ if st.button("🚀 Train Model"):
     ax[0].legend()
     ax[0].grid(True)
 
-    ax[1].plot(history.history['loss'], label="Train Loss", color="#FF7F50") # Coral
+    ax[1].plot(history.history['loss'], label="Train Loss", color="#FF7F50")  # Coral
     ax[1].plot(history.history['val_loss'], label="Validation Loss", color="#008080")  # Teal
     ax[1].set_title("Loss over Epochs")
     ax[1].set_xlabel("Epochs")
@@ -224,7 +254,9 @@ if st.button("🚀 Train Model"):
     y_pred = (model.predict(X_test) > 0.5).astype(int)
     cm = confusion_matrix(y_test, y_pred)
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="YlGnBu", xticklabels=["Not Converted", "Converted"], yticklabels=["Not Converted", "Converted"]) # changed cmap
+    sns.heatmap(cm, annot=True, fmt="d", cmap="YlGnBu",
+                xticklabels=["Not Converted", "Converted"],
+                yticklabels=["Not Converted", "Converted"])  # changed cmap
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
     st.pyplot(fig)
@@ -241,7 +273,7 @@ if st.button("🚀 Train Model"):
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
     roc_auc = auc(fpr, tpr)
     fig, ax = plt.subplots(figsize=(6, 4))
-    plt.plot(fpr, tpr, color="#FF7F50", lw=2, label=f"AUC = {roc_auc:.2f}") # Coral
+    plt.plot(fpr, tpr, color="#FF7F50", lw=2, label=f"AUC = {roc_auc:.2f}")  # Coral
     plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
@@ -252,7 +284,7 @@ if st.button("🚀 Train Model"):
 
     # Feature Importance using SHAP
     st.subheader("🔍 Feature Importance")
-    explainer = shap.Explainer(model, X_train[:100])
+    explainer = shap.Explainer(model, X_train_resampled[:100]) # Use resampled for explainer
     shap_values = explainer(X_test[:100])
     fig, ax = plt.subplots(figsize=(10, 6))
     shap.summary_plot(shap_values, X_test[:100], show=False)
