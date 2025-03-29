@@ -292,7 +292,3 @@ st.subheader("Descriptive Statistics")
 st.dataframe(df.describe())
 
 
-# Pairplot for visual insights
-st.subheader("Pairplot of features")
-fig = sns.pairplot(df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']])
-st.pyplot(fig)
