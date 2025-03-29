@@ -152,7 +152,7 @@ if st.button("🚀 Train Model"):
         df = pd.read_csv("data.csv")
 
         # Randomly sample 50,000 rows
-        df = df.sample(n=50000, random_state=552627) # sampling 50000 rows
+        df = df.sample(n=50000, random_state=random_state) # sampling 50000 rows
 
         # 🎯 Feature Selection
         features = ['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent']
