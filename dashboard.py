@@ -293,8 +293,17 @@ st.dataframe(df.describe())
 
 # Correlation Heatmap
 st.subheader("Correlation Heatmap")
+
+# Load and preprocess data
+df = pd.read_csv("data.csv")
+df = df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']]
+
+# Convert all columns to numeric and drop NaNs
+df = df.apply(pd.to_numeric, errors='coerce').dropna()
+
+# Plot heatmap
 fig, ax = plt.subplots(figsize=(8, 6))
-sns.heatmap(df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']].corr(), annot=True, cmap="coolwarm", ax=ax)
+sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
 st.pyplot(fig)
 
 # Add a check for GPU availability and print a message
