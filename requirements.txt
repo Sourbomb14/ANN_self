@@ -7,5 +7,5 @@ matplotlib
 gdown
 shap
 scikit-learn
-imbalanced-learn
+imblearn
 Pillow
