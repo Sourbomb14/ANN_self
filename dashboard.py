@@ -296,13 +296,23 @@ st.subheader("Correlation Heatmap")
 
 # Load and preprocess data
 df = pd.read_csv("data.csv")
-df = df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']]
+df_corr = df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']].copy()
 
 # Convert all columns to numeric and drop NaNs
-df['Gender'] = pd.to_numeric(df['Gender'], errors='coerce')
-df = df.dropna()
+for col in df_corr.columns:
+    df_corr[col] = pd.to_numeric(df_corr[col], errors='coerce')
+df_corr = df_corr.dropna()
 
-# Plot heatmap
-fig, ax = plt.subplots(figsize=(8, 6))
-sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
+# Check if the DataFrame is empty
+if df_corr.empty:
+    st.warning("No numeric data available for correlation heatmap.")
+else:
+    # Plot heatmap
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(df_corr.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
+    st.pyplot(fig)
+
+# Pairplot for visual insights
+st.subheader("Pairplot of features")
+fig = sns.pairplot(df[['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']])
 st.pyplot(fig)
