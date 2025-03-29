@@ -22,42 +22,41 @@ st.set_page_config(page_title="ANN Conversion Prediction", layout="wide")
 
 # 📥 Load Dataset
 DATASET_FILE_ID = "1OPmMFUQmeZuaiYb0FQhwOMZfEbVrWKEK"
-MODEL_FILE_ID = "1NNxt6hnkAxUO8aI2sNCzPut0Nbmp8H_T"  # Add this line to define the model file ID
-MODEL_PATH = "conversion_model.h5" # Define a path for the model
+MODEL_FILE_ID = "1NNxt6hnkAxUO8aI2sNCzPut0Nbmp8H_T"
+MODEL_PATH = "conversion_model.h5"
 
 if not os.path.exists("data.csv"):
     gdown.download(f"https://drive.google.com/uc?id={DATASET_FILE_ID}", "data.csv", quiet=False)
 
-if not os.path.exists(MODEL_PATH): # Download the model if it doesn't exist
+if not os.path.exists(MODEL_PATH):
     gdown.download(f"https://drive.google.com/uc?id={MODEL_FILE_ID}", MODEL_PATH, quiet=False)
 
-
-# 🎨 Updated Custom CSS for Enhanced UI - Coral and Teal Theme
+# 🎨 Updated Custom CSS
 st.markdown(
     """
     <style>
         /* Updated color scheme */
         .title {
-            color: #FF7F50; /* Coral */
+            color: #FF7F50;
             text-align: center;
             margin-bottom: 2rem;
         }
         .sidebar-header {
-            color: #008080; /* Teal */
+            color: #008080;
             font-size: 1.5em;
             margin-bottom: 1rem;
         }
         .metric-label {
             font-size: 1.2em;
-            color: #2C3E50; /* Dark gray */
+            color: #2C3E50;
         }
         .metric-value {
             font-size: 1.5em;
             font-weight: bold;
-            color: #F0B27A; /* Light Coral */
+            color: #F0B27A;
         }
         .stButton > button {
-            background-color: #008080; /* Teal */
+            background-color: #008080;
             color: white;
             padding: 10px 20px;
             font-size: 16px;
@@ -69,18 +68,18 @@ st.markdown(
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .stButton > button:hover {
-            background-color: #006060; /* Darker Teal */
+            background-color: #006060;
             box-shadow: 0 3px 7px rgba(0,0,0,0.3);
         }
         .stSlider > div > div > div > div {
-            background-color: #008080; /* Teal */
+            background-color: #008080;
         }
         .stSelectbox > div > div {
-            border-color: #008080; /* Teal */
+            border-color: #008080;
         }
         .stSelectbox > div > div:focus-within {
-            border-color: #006060; /* Darker Teal */
-            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.3); /* Teal focus shadow */
+            border-color: #006060;
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.3);
         }
         .dataframe {
             border: 1px solid #E0E0E0;
@@ -126,7 +125,6 @@ optimizers = {
 }
 optimizer = optimizers[optimizer_choice]
 
-
 # --- 2. Model Building ---
 def build_model(input_shape, optimizer, activation, dense_layers, neurons, dropout_rate):
     """
@@ -159,7 +157,7 @@ if st.button("🚀 Train Model"):
         df = pd.read_csv("data.csv")
 
         # Randomly sample 50,000 rows
-        df = df.sample(n=50000, random_state=552627) # sampling 50000 rows
+        df = df.sample(n=50000, random_state=552627)
 
         # 🎯 Feature Selection
         features = ['Age', 'Gender', 'Income', 'Purchases', 'Clicks', 'Spent']
@@ -187,9 +185,12 @@ if st.button("🚀 Train Model"):
         class_weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
         class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
 
-        # Build and train the model
+        # Clear any existing TensorFlow session and reset the graph
+        tf.keras.backend.clear_session()
+        # Build and train the model within the same context
         model = build_model(X_train.shape[1], optimizer, activation_function, dense_layers, neurons_per_layer, dropout_rate)
         history = model.fit(X_train, y_train, epochs=epochs, batch_size=128, validation_split=0.2, class_weight=class_weight_dict, verbose=0)
+
 
     st.success("🎉 Model training complete!")
 
@@ -209,16 +210,16 @@ if st.button("🚀 Train Model"):
     # Training Performance Plots
     st.subheader("📈 Training Performance")
     fig, ax = plt.subplots(1, 2, figsize=(14, 5))
-    ax[0].plot(history.history['accuracy'], label="Train Accuracy", color="#FF7F50")  # Coral
-    ax[0].plot(history.history['val_accuracy'], label="Validation Accuracy", color="#008080")  # Teal
+    ax[0].plot(history.history['accuracy'], label="Train Accuracy", color="#FF7F50")
+    ax[0].plot(history.history['val_accuracy'], label="Validation Accuracy", color="#008080")
     ax[0].set_title("Accuracy over Epochs")
     ax[0].set_xlabel("Epochs")
     ax[0].set_ylabel("Accuracy")
     ax[0].legend()
     ax[0].grid(True)
 
-    ax[1].plot(history.history['loss'], label="Train Loss", color="#FF7F50") # Coral
-    ax[1].plot(history.history['val_loss'], label="Validation Loss", color="#008080")  # Teal
+    ax[1].plot(history.history['loss'], label="Train Loss", color="#FF7F50")
+    ax[1].plot(history.history['val_loss'], label="Validation Loss", color="#008080")
     ax[1].set_title("Loss over Epochs")
     ax[1].set_xlabel("Epochs")
     ax[1].set_ylabel("Loss")
@@ -231,7 +232,7 @@ if st.button("🚀 Train Model"):
     y_pred = (model.predict(X_test) > 0.5).astype(int)
     cm = confusion_matrix(y_test, y_pred)
     fig, ax = plt.subplots(figsize=(6, 4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="YlGnBu", xticklabels=["Not Converted", "Converted"], yticklabels=["Not Converted", "Converted"]) # changed cmap
+    sns.heatmap(cm, annot=True, fmt="d", cmap="YlGnBu", xticklabels=["Not Converted", "Converted"], yticklabels=["Not Converted", "Converted"])
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
     st.pyplot(fig)
@@ -248,7 +249,7 @@ if st.button("🚀 Train Model"):
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
     roc_auc = auc(fpr, tpr)
     fig, ax = plt.subplots(figsize=(6, 4))
-    plt.plot(fpr, tpr, color="#FF7F50", lw=2, label=f"AUC = {roc_auc:.2f}") # Coral
+    plt.plot(fpr, tpr, color="#FF7F50", lw=2, label=f"AUC = {roc_auc:.2f}")
     plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
@@ -308,14 +309,14 @@ if st.button("Predict Conversion"):
 
 # Display the first 5 rows of the dataframe
 st.subheader("Sample Data")
-df = pd.read_csv("data.csv") #load the data
+df = pd.read_csv("data.csv")
 st.dataframe(df.head())
 
 # Display descriptive statistics for the numerical columns
 st.subheader("Descriptive Statistics")
 st.dataframe(df.describe())
 
-#  create pair plots for the numerical features
+# Create pair plots for the numerical features
 st.subheader("Pair Plots")
 fig = sns.pairplot(df[['Age', 'Income', 'Purchases', 'Clicks', 'Spent', 'Converted']], hue='Converted')
 st.pyplot(fig)
